@@ -11,8 +11,8 @@ meta4diagGUI <- function(){
   #if (.Platform$OS.type == "windows"){
   #}else{}
   
-  mrv$VERSION <- "1.0.19"
-  mrv$DATE <- "2015-08-23"
+  mrv$VERSION <- "1.0.20"
+  mrv$DATE <- "2015-08-24"
   mrv$COPYRIGHT <- "Copyright (C) 2015 INLA Group."
 
 
