@@ -580,7 +580,7 @@ shinyServer(function(input, output, session) {
         df = inputDataFile()
         original_datanames = colnames(df)
         datanames = tolower(original_datanames)
-        if(dim(df)[2]>5){
+        if(dim(df)[2]>=5){
           pt_variables = original_datanames[-which(datanames %in% c("studynames","tp","tn","fp","fn"))]
           pt_variables = c("None", pt_variables)
         }else{
@@ -884,16 +884,8 @@ shinyServer(function(input, output, session) {
   
   #----------- INLA Version ---------------#
   output$inlaversion  = renderPrint({
-    #   cat(length(input$partialdata))
-    #   cat("\n")
-        # cat(input$modelnos)
-    #     cat("\n")
-    #     cat(class(input$datamodality))
-    #     cat("\n")
-    #     cat(input$partialdata)
-    #     cat("\n")
-    #     cat(class(input$partialdata))
-    #     cat("\n")
+#     cat(input$datamodality)
+#     cat("\n")
     cat(paste("INLA version.........: ", inla.version("version"),sep=""))
     cat("\n")
     cat(paste("INLA date............: ", inla.version("date"),sep=""))
@@ -988,10 +980,10 @@ shinyServer(function(input, output, session) {
         cat("library(meta4diag)")
         cat("\n")
         cat("\n")
-        inFile <- input$datafile
+        inFile = input$datafile
         if (is.null(inFile)){
-          names = input$choosedata
-          cat(paste("data(",names,")",sep=""))
+          names = switch(input$choosedata, "telomerase"="Telomerase","catheter"="Catheter","scheidler"="Scheidler")
+          cat(paste("data(",names,", package=\"meta4diag\")",sep=""))
           cat("\n")
           cat(paste("data = ",names,sep=""))
         }else{
@@ -1071,7 +1063,7 @@ shinyServer(function(input, output, session) {
         }
         cat("\n")
         cat("\n")
-        cat(paste("res = makeObject(outdata = outdata, outprior = outpriors, model = model, nsample = ",input$modelnos,")"))
+        cat(paste("res = makeObject(model = model, nsample = ",input$modelnos,")"))
       }
     }
   })
@@ -1630,6 +1622,59 @@ shinyServer(function(input, output, session) {
   })
   
   ###########################################################
+  ###### Construct Main Crosshair needed UI
+  ###########################################################
+  output$Funnel <- renderPlot({
+    data = inputdata()
+    if(is.null(data)){
+      return(NULL)
+    }else{
+      model = inputmodel()
+      if(is.null(model)){
+        return(NULL)
+      }else{
+        est.type = input$sptype
+        funnel(model,est.type=est.type)
+      }
+    }
+  })
+  output$FunnelOut <- renderUI({
+    if(input$RunINLAButton == 0){
+      p("Please press the RunINLA button to check the result.")
+    }else{
+      data = inputdata()
+      if(is.null(data)){
+        p("Data is not valid. Please check data.")
+      }else{
+        model = inputmodel()
+        if(is.null(model)){
+          priors = inputPrior()
+          if(is.null(priors)){
+            var1 = inputPriorVar1()
+            var2 = inputPriorVar2()
+            cor = inputPriorCor()
+            if(!var1$var.flag){
+              p("Invalid hyper parameter(s) of the prior for the first variance is given!")
+            }else{
+              if(!var2$var.flag){
+                p("Invalid hyper parameter(s) of the prior for the second variance is given!")
+              }else{
+                if(!cor$var.flag){
+                  p("Invalid hyper parameter(s) of the prior for the correlation is given!")
+                }
+              }
+            }
+          }else{
+            p("Model is not valid. Please set verbose to TRUE to check the internal information. 
+              The information will be shown in the R Console.")
+          }
+          }else{
+            plotOutput("Funnel", height="400px", width = "400px")
+        } 
+      }
+      }
+    })
+  ###########################################################
   ###### Construct Main Fitted needed UI
   ###########################################################
   output$Fitted <- renderPrint({
@@ -1882,6 +1927,48 @@ shinyServer(function(input, output, session) {
             est.type = input$sptype
             
             crosshair(model,est.type=est.type)
+          }
+        }
+      }
+      dev.off()
+    }
+  )
+  
+  ###########################################################
+  ###### Construct Save Funnel
+  ###########################################################
+  output$SaveFunnel <- downloadHandler(
+    filename = function() {
+      paste('Funnel-', Sys.Date(), '.',input$funnelform, sep='')
+    },
+    content = function(file) {
+      fileform = input$funnelform
+      width = input$Funnel_width
+      height = input$Funnel_height
+      if(fileform=="eps"){
+        setEPS()
+        postscript(file, width=width, height=height)
+      }else if(fileform=="pdf"){
+        pdf(file, width=width, height=height)
+      }else if(fileform=="jpg"){
+        jpeg(file, width = width, height = height, units = "in", res=300)
+      }else{
+        png(file, width = width, height = height, units = "in", res=300)
+      }
+      if(input$RunINLAButton == 0){
+        plot.new()
+      }else{
+        data = inputdata()
+        if(is.null(data)){
+          plot.new()
+        }else{
+          model = inputmodel()
+          if(is.null(model)){
+            plot.new()
+          }else{
+            est.type = input$sptype
+            
+            funnel(model)
           }
         }
       }
